@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eye Analysis Application</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            padding-top: 20px;
+            font-family: 'Roboto', sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 960px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .image-preview {
+            width: 100%;
+            min-height: 300px;
+            border: 2px solid #eeeeee;
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #cccccc;
+        }
+        .image-preview img {
+            width: 384px;
+            height: 216px;
+        }
+        .hidden { display: none; }
+        .btn-primary, .btn-secondary, .btn-success {
+            border: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .btn-primary {
+            background-color: #4a90e2;
+            color: white;
+        }
+        .form-group label {
+            font-weight: bold;
+            color: #666;
+        }
+        .results-card {
+            background: #ffffff;
+            padding: 20px;
+            margin-top: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            font-size: 16px;
+        }
+        .results-header {
+            font-size: 20px;
+            color: #4a90e2;
+            margin-bottom: 15px;
+        }
+        .result-item {
+            margin-bottom: 10px;
+        }
+        .result-label {
+            font-weight: bold;
+            color: #333;
+        }
+        .progress-container {
+            width: 100%;
+            background-color: #eeeeee; /* Light gray background */
+            position: relative;
+            height: 20px;
+            border-radius: 10px;
+        }
+
+        .progress-bar {
+            position: absolute;
+            height: 100%;
+            top: 0;
+            background-color: #4a90e2; /* Blue for positive */
+            transition: all 1s ease-in-out;
+            text-align: center;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .progress-bar.negative {
+            left: 50%;
+            transform: translateX(-100%);
+            background-color: #e2544f; /* Red for negative */
+        }
+
+        .progress-bar.positive {
+            left: 50%;
+        }
+
+    </style>
+</head>
+<body>
+  <div class="container">
+      <h1 class="text-center">Upload or Capture Images for Analysis</h1>
+      <form id="upload-form" enctype="multipart/form-data">
+          <div class="row">
+              <div class="col-md-6">
+                  <div class="form-group">
+                      <label for="image1">Pre-operative Image:</label>
+                      <input type="file" class="form-control-file" name="image1" id="upload-pre">
+                      <button type="button" onclick="startCamera('pre')" class="btn btn-secondary">Start Camera for Pre-op</button>
+                      <video id="video-pre" class="hidden" width="384" height="216" autoplay></video>
+                      <button type="button" onclick="captureImage('pre')" class="btn btn-success hidden" id="capture-pre">Capture Pre-op Image</button>
+                      <canvas id="canvas-pre" class="hidden"></canvas>
+                      <img id="captured-image-pre" class="hidden" width="384" height="216">
+                  </div>
+              </div>
+              <div class="col-md-6">
+                  <div class="form-group">
+                      <label for="image2">Post-operative Image:</label>
+                      <input type="file" class="form-control-file" name="image2" id="upload-post">
+                      <button type="button" onclick="startCamera('post')" class="btn btn-secondary">Start Camera for Post-op</button>
+                      <video id="video-post" class="hidden" width="384" height="216" autoplay></video>
+                      <button type="button" onclick="captureImage('post')" class="btn btn-success hidden" id="capture-post">Capture Post-op Image</button>
+                      <canvas id="canvas-post" class="hidden"></canvas>
+                      <img id="captured-image-post" class="hidden" width="384" height="216">
+                  </div>
+              </div>
+          </div>
+          <button type="submit" class="btn btn-primary">Analyze</button>
+      </form>
+      <div id="loading" class="hidden text-center">
+          <p>Loading...</p>
+      </div>
+      <div id="result-image" class="image-preview"></div>
+      <div class="results-card" id="analysis-result"></div>
+  </div>
+
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+    // JavaScript for handling camera, image capture, and form submission
+    // function startCamera(type) {
+    //     const videoId = 'video-' + type;
+    //     document.getElementById(videoId).classList.remove('hidden');
+    //     document.getElementById('capture-' + type).classList.remove('hidden');
+    //     navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+    //         .then(function(stream) {
+    //             document.getElementById(videoId).srcObject = stream;
+    //         })
+    //         .catch(function(error) {
+    //             console.error("Cannot access media devices.", error);
+    //             alert('Error: Cannot access the camera.');
+    //         });
+    // }
+    function startCamera(type) {
+        const videoId = 'video-' + type;
+        const videoElement = document.getElementById(videoId);
+        videoElement.classList.remove('hidden');
+        document.getElementById('capture-' + type).classList.remove('hidden');
+
+        const constraints = {
+            video: {
+                width: 1920,  // Requesting 1080p resolution
+                height: 1080
+            },
+            audio: false
+        };
+
+        navigator.mediaDevices.getUserMedia(constraints)
+            .then(function(stream) {
+                videoElement.srcObject = stream;
+                videoElement.play(); // Ensure the video plays after setting the source
+            })
+            .catch(function(error) {
+                console.error("Cannot access media devices.", error);
+                alert('Error: Cannot access the camera.');
+            });
+    }
+
+    // function captureImage(type) {
+    //     const video = document.getElementById('video-' + type);
+    //     const canvas = document.getElementById('canvas-' + type);
+    //     const context = canvas.getContext('2d');
+    //     context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    //     const imageDataUrl = canvas.toDataURL('image/jpeg');
+    //     const fileInput = document.getElementById('upload-' + type);
+    //     fetch(imageDataUrl)
+    //         .then(res => res.blob())
+    //         .then(blob => {
+    //             const file = new File([blob], `${type}-captured-image.jpg`, {type: "image/jpeg"});
+    //             const dataTransfer = new DataTransfer();
+    //             dataTransfer.items.add(file);
+    //             fileInput.files = dataTransfer.files;
+    //             stopCamera(video);
+    //             alert('Capture successful!');
+    //             var imgElement = document.getElementById('captured-image-' + type);
+    //             imgElement.src = imageDataUrl;
+    //             imgElement.classList.remove('hidden');
+    //         });
+    // }
+
+    function captureImage(type) {
+        const video = document.getElementById('video-' + type);
+        const canvas = document.getElementById('canvas-' + type);
+        const context = canvas.getContext('2d');
+
+        // Set canvas size to match video size
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageDataUrl = canvas.toDataURL('image/jpeg', 1.0); // High quality
+
+        const fileInput = document.getElementById('upload-' + type);
+        fetch(imageDataUrl)
+            .then(res => res.blob())
+            .then(blob => {
+                const file = new File([blob], `${type}-captured-image.jpg`, { type: "image/jpeg" });
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                fileInput.files = dataTransfer.files;
+                stopCamera(video); // Assuming a function to stop the camera
+                alert('Capture successful!');
+                var imgElement = document.getElementById('captured-image-' + type);
+                imgElement.src = imageDataUrl;
+                imgElement.classList.remove('hidden');
+            });
+    }
+
+
+    function stopCamera(videoElement) {
+        const stream = videoElement.srcObject;
+        const tracks = stream.getTracks();
+        tracks.forEach(function(track) {
+            track.stop();
+        });
+        videoElement.srcObject = null;
+        videoElement.classList.add('hidden');
+        document.getElementById('capture-' + videoElement.id.split('-')[1]).classList.add('hidden');
+    }
+
+    document.getElementById('upload-form').onsubmit = async function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+
+        document.getElementById('loading').style.display = 'block';
+
+        try {
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            document.getElementById('loading').style.display = 'none';
+
+            if (response.ok) {
+                updateResults(data.results);
+                document.getElementById('result-image').innerHTML = `<img src="${data.Before}" alt="Before"><img src="${data.After}" alt="After">`;
+                document.getElementById('captured-image-pre').classList.add('hidden');
+                document.getElementById('captured-image-post').classList.add('hidden');
+            } else {
+                alert('Error: ' + (data.error || 'Failed to analyze the images'));
+            }
+        } catch (error) {
+            document.getElementById('loading').style.display = 'none';
+            console.error('Error:', error);
+            alert('Failed to process the request. Please try again.');
+        }
+    };
+
+    function updateResults(results) {
+        const analysisResult = document.getElementById('analysis-result');
+        analysisResult.innerHTML = `
+            <div class="results-header">Analysis Results</div>
+            ${createResultItem("Left Eye Base Height Change", results.left_ebh_change, results.left_ebh1, results.left_ebh2)}
+            ${createResultItem("Right Eye Base Height Change", results.right_ebh_change, results.right_ebh1, results.right_ebh2)}
+            ${createResultItem("Ocular Area Change - Left", results.ocular_left_change, results.ocular_area1_left, results.ocular_area2_left)}
+            ${createResultItem("Ocular Area Change - Right", results.ocular_right_change, results.ocular_area1_right, results.ocular_area2_right)}
+        `;
+    }
+
+    function createResultItem(label, change, pre, post) {
+        const changePercentage = Math.abs(change);
+        let positionStyle = '';
+
+        if (change >= 0) {
+            positionStyle = `left: 50%; width: ${changePercentage/2}%`;
+        } else {
+            positionStyle = `left: 50%; transform: translateX(-100%); width: ${changePercentage/2}%`;
+        }
+
+        return `
+            <div class="result-item">
+                <span class="result-label">${label}:</span>
+                <div class="progress-container">
+                    <div class="progress-bar ${change >= 0 ? 'positive' : 'negative'}" style="${positionStyle}">${change.toFixed(2)}%</div>
+                </div>
+                <small>Pre-op: ${pre}, Post-op: ${post}, Change: ${change.toFixed(2)}%</small>
+            </div>
+        `;
+    }
+
+</script>
+</body>
+</html>

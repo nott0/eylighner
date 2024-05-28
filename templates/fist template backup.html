@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eye Analysis Application</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { padding-top: 20px; }
+        .image-preview {
+            width: 100%;
+            min-height: 300px;
+            border: 2px solid #dddddd;
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #cccccc;
+        }
+        .image-preview img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1 class="text-center">Upload Images for Analysis</h1>
+    <div class="row">
+        <div class="col-md-6 offset-md-3">
+            <form id="upload-form" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="image1">Pre-operative Image:</label>
+                    <input type="file" class="form-control-file" name="image1" required>
+                </div>
+                <div class="form-group">
+                    <label for="image2">Post-operative Image:</label>
+                    <input type="file" class="form-control-file" name="image2" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Analyze</button>
+            </form>
+            <div id="loading" style="display:none;" class="text-center">
+                <p>Loading...</p>
+            </div>
+            <div id="result-image" class="image-preview"></div>
+            <pre id="analysis-result"></pre>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap and jQuery -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<script>
+document.getElementById('upload-form').onsubmit = async function(e) {
+    e.preventDefault();
+    document.getElementById('loading').style.display = 'block';
+    const formData = new FormData(this);
+    const response = await fetch('/upload', { method: 'POST', body: formData });
+    const data = await response.json();
+    document.getElementById('loading').style.display = 'none';
+    if (data.Before && data.After) {
+        document.getElementById('result-image').innerHTML = '<img src="' + data.Before + '" alt="Before"><img src="' + data.After + '" alt="After">';
+    }
+    document.getElementById('analysis-result').textContent = JSON.stringify(data.results, null, 2);
+};
+</script>
+</body>
+</html>
